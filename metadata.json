@@ -1,0 +1,6 @@
+{
+  "name": "VidyaSetu AI",
+  "description": "An AI Operating System for Schools that continuously analyzes attendance, academics, behavior, and student wellbeing to generate intelligent, personalized actions for teachers, parents, students, and admins.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
