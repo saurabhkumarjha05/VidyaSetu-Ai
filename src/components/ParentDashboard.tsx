@@ -252,8 +252,19 @@ export default function ParentDashboard({ user, students, onAddLog, onLogout }: 
 
   if (!child) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="max-w-lg w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-slate-900">No child profile connected</h1>
+          <p className="mt-3 text-sm text-slate-600">
+            The backend is reachable, but this parent account does not have a linked student record yet.
+          </p>
+          <button
+            onClick={onLogout}
+            className="mt-6 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Go back
+          </button>
+        </div>
       </div>
     );
   }

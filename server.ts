@@ -5,8 +5,8 @@ import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import { initialStudents } from "./serverSeedData";
 import { Student } from "./src/types";
+import { registerExtendedApi } from "./backend/src/routes/apiRoutes";
 
 dotenv.config();
 
@@ -48,9 +48,17 @@ async function generateContentWithRetry(options: {
 
 const app = express();
 const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 const PORT = 3000;
 
 app.use(express.json());
+
+registerExtendedApi(app, io);
 
 // ----------------------------------------------------
 // MULTI-TENANT WORKSPACES & DATABASES
@@ -88,7 +96,7 @@ let supportTicketsDb: SupportTicket[] = [
   { id: "tkt-02", schoolName: "Delhi Public School", subject: "Storage Limit Warning", message: "Our media drive is approaching 85% capacity. Can we request an additional 100GB?", status: "Resolved", createdAt: "2026-07-09T09:00:00Z", reply: "Approved. Storage limit increased by 100GB under educational tier license." }
 ];
 
-let studentsDb: Student[] = [...initialStudents];
+let studentsDb: Student[] = [];
 
 // Notice Board Database (School Announcements, isolated or GLOBAL)
 let noticesDb = [
@@ -1288,16 +1296,6 @@ app.post("/api/ai/notes-summarizer", async (req, res) => {
   } catch (err: any) {
     console.error("FastAPI notes-summarizer proxy error:", err);
     return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ----------------------------------------------------
-// SOCKET.IO REALTIME HANDLER SETUP
-// ----------------------------------------------------
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
   }
 });
 
