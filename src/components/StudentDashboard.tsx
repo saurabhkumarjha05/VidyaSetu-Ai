@@ -38,6 +38,13 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
   const [teacherTyping, setTeacherTyping] = useState(false);
   const currentStudent = students.find((s) => s.id === user.associatedStudentId) || students[0];
 
+  const currentStudentAverage = currentStudent
+    ? Math.round(
+        currentStudent.academics.subjects.flatMap((s) => s.grades).reduce((sum, g) => sum + (g.score / g.maxScore) * 100, 0) /
+          (currentStudent.academics.subjects.flatMap((s) => s.grades).length || 1)
+      )
+    : 80;
+
   // Wide range of tabs matching the Left Sidebar specification
   const [activeTab, setActiveTab] = useState<
     | "DASHBOARD" | "SUBJECTS" | "ATTENDANCE" | "HOMEWORK" | "ASSIGNMENTS" | "EXAMS" | "TIMETABLE"
@@ -140,6 +147,25 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory, sendingMessage]);
 
+  if (!currentStudent) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="max-w-lg w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-slate-900">No student data yet</h1>
+          <p className="mt-3 text-sm text-slate-600">
+            The backend is connected, but this school workspace does not have a student record available for this account yet.
+          </p>
+          <button
+            onClick={onLogout}
+            className="mt-6 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Calculations for KPI cards
   const attRate = currentStudent.attendance.totalDays > 0 ? Math.round((currentStudent.attendance.presentDays / currentStudent.attendance.totalDays) * 100) : 100;
   const allGrades = currentStudent.academics.subjects.flatMap((s) => s.grades);
@@ -171,9 +197,9 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
           studentId: currentStudent.id,
           messages: [...chatHistory, userMsg].map((msg) => ({
             role: msg.role,
-            text: msg.text
-          }))
-        })
+            text: msg.text,
+          })),
+        }),
       });
       const data = await res.json();
       if (data.success) {
