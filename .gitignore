@@ -42,3 +42,5 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+ai/models/*.pkl
+ai/models/*.joblib
