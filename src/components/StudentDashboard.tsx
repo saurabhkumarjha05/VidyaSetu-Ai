@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Student, ChatMessage, User } from "../types";
 import { useSocket } from "../lib/socket";
+import { aiService } from "../services/aiService";
+import { chatService } from "../services/chatService";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Brain, Send, Heart, Smile, BookOpen, Calendar, Sparkles, AlertCircle, Loader2, LogOut, Bell, Settings,
@@ -164,18 +166,13 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
     setSendingMessage(true);
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: currentStudent.id,
-          messages: [...chatHistory, userMsg].map((msg) => ({
-            role: msg.role,
-            text: msg.text
-          }))
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        currentStudent.id,
+        [...chatHistory, userMsg].map((msg) => ({
+          role: msg.role === "user" ? "user" : "model",
+          text: msg.text
+        }))
+      );
       if (data.success) {
         setChatHistory((prev) => [
           ...prev,
@@ -212,27 +209,36 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
   };
 
   // Solve doubts instantly with AI step-by-step
-  const handleDoubtSolveSubmit = (e: React.FormEvent) => {
+  const handleDoubtSolveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!doubtInput.trim()) return;
     setSolvingDoubt(true);
+    setDoubtSolution(null);
 
-    setTimeout(() => {
+    try {
+      const data = await aiService.solveDoubt(doubtInput, activeTestSubject);
+      if (data.success && data.solution) {
+        setDoubtSolution(data.solution);
+      } else {
+        throw new Error("Failed to solve doubt");
+      }
+    } catch (err) {
+      console.error(err);
       setDoubtSolution({
         question: doubtInput,
         steps: [
           "Identify parameters: sin(θ) = opposite/hypotenuse = 3/5. Therefore opposite = 3, hypotenuse = 5.",
           "Apply Pythagorean Theorem: adjacent^2 + opposite^2 = hypotenuse^2.",
           "Solve for adjacent side: adjacent = √(5^2 - 3^2) = √(25 - 9) = √16 = 4.",
-          "Formulate Cosine: cos(θ) = adjacent/hypotenuse = 4/5.",
-          "Concept Checklist: This utilizes standard 3-4-5 right triangles. In Hindi: यह पाइथागोरस त्रिकोण है।"
+          "Formulate Cosine: cos(θ) = adjacent/hypotenuse = 4/5."
         ],
         hint: "Always draw a right-angled triangle first to visualize the sides.",
-        alternatives: "Alternative: Use the trigonometric identity sin²(θ) + cos²(θ) = 1. Therefore, cos(θ) = √(1 - (3/5)²) = 4/5.",
+        alternatives: "Alternative: Use the trigonometric identity sin²(θ) + cos²(θ) = 1. Therefore, cos(θ) = 4/5.",
         related: "Trigonometric ratios, unit circle projections, identity calculations."
       });
+    } finally {
       setSolvingDoubt(false);
-    }, 1200);
+    }
   };
 
   // Submit mood entry
@@ -280,11 +286,10 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
     const room = `student-teacher:${studentId}:${selectedTeacherId}`;
     socket.emit("chat:join", room);
 
-    fetch(`/api/chats/${room}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.messages.length > 0) {
-          const mapped = data.messages.map((m: any) => ({
+    chatService.getMessages(room)
+      .then((messages) => {
+        if (messages.length > 0) {
+          const mapped = messages.map((m: any) => ({
             sender: m.senderRole === "Student" ? "student" as const : "teacher" as const,
             text: m.text,
             date: new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -355,12 +360,22 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
   };
 
   // Summarize notes using AI
-  const handleSummarizeNotes = () => {
+  const handleSummarizeNotes = async () => {
+    if (!studentNotes.trim()) return;
     setIsSummarizingNotes(true);
-    setTimeout(() => {
+    try {
+      const data = await aiService.summarizeNotes(studentNotes);
+      if (data.success && data.summary) {
+        setStudentNotes((prev) => `${prev}\n\n## AI Note Summary\n${data.summary}`);
+      } else {
+        throw new Error("Failed to summarize notes");
+      }
+    } catch (err) {
+      console.error(err);
       setStudentNotes((prev) => `${prev}\n\n## AI Note Summary\n- Key Formula: f = μ * N\n- Essential concept: Newton's Laws represent the foundation of classical kinematics.\n- Priority action: Memorize standard units before exams.`);
+    } finally {
       setIsSummarizingNotes(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -627,7 +642,12 @@ export default function StudentDashboard({ user, students, onAddLog, onLogout }:
                   <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-bold rounded-md uppercase font-mono tracking-wider">Daily Study Agenda</span>
                   <h2 className="text-lg font-display font-bold text-slate-900">What should you master today, {currentStudent.name.split(" ")[0]}?</h2>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    You have <span className="font-bold text-rose-600">{pendingHomework.length} homework</span> sheets pending. Vidya AI recommends dedicating 35 minutes to <span className="font-bold text-indigo-600">Trigonometric proofs</span> in Mathematics before Thursday's exam cycle.
+                    You have <span className="font-bold text-rose-600">{pendingHomework.length} homework</span> sheets pending. 
+                    {(currentStudent as any).predictedPerformance !== undefined ? (
+                      <span> Your predicted term performance is <span className="font-bold text-indigo-600">{(currentStudent as any).predictedPerformance.toFixed(1)}%</span>. Vidya AI identifies <span className="font-bold text-indigo-600">{(currentStudent as any).strongSubject}</span> as your strongest subject, and suggests focusing on <span className="font-bold text-rose-600">{(currentStudent as any).weakSubject}</span> for revision.</span>
+                    ) : (
+                      <span> Vidya AI recommends dedicating 35 minutes to <span className="font-bold text-indigo-600">Trigonometric proofs</span> in Mathematics before Thursday's exam cycle.</span>
+                    )}
                   </p>
                   
                   {/* Streak & Daily Goals summary mini-widget */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Role, Student, User } from "./types";
+import { studentService } from "./services/studentService";
 import LandingPage from "./components/LandingPage";
 import AuthPage from "./components/AuthPage";
 import StudentDashboard from "./components/StudentDashboard";
@@ -104,14 +105,9 @@ export default function App() {
   const fetchStudents = async () => {
     try {
       setConnectionStatus("Syncing");
-      const res = await fetch("/api/data");
-      const data = await res.json();
-      if (data.success) {
-        setStudents(data.students);
-        setConnectionStatus("Connected");
-      } else {
-        setConnectionStatus("Error");
-      }
+      const studentsData = await studentService.getStudents();
+      setStudents(studentsData);
+      setConnectionStatus("Connected");
     } catch (err) {
       console.error(err);
       setConnectionStatus("Error");
@@ -131,11 +127,8 @@ export default function App() {
         if (parsed && parsed.role) {
           setSession(parsed);
           // Fetch immediately to populate correct rosters
-          fetch("/api/data")
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) setStudents(data.students);
-            })
+          studentService.getStudents()
+            .then(studentsData => setStudents(studentsData))
             .catch(console.error);
         }
       } catch (e) {
@@ -172,19 +165,9 @@ export default function App() {
   const handleAddLog = async (studentId: string, type: string, data: any): Promise<boolean> => {
     try {
       setConnectionStatus("Syncing");
-      const res = await fetch("/api/logs/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId, type, data }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        await fetchStudents(); // Re-sync state
-        return true;
-      } else {
-        setConnectionStatus("Error");
-        return false;
-      }
+      await studentService.addStudentLog(studentId, type as any, data);
+      await fetchStudents(); // Re-sync state
+      return true;
     } catch (err) {
       console.error("Error writing log:", err);
       setConnectionStatus("Error");

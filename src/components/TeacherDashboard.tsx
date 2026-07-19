@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Student, User, AIInsight, ChatMessage } from "../types";
 import { useSocket } from "../lib/socket";
+import { aiService } from "../services/aiService";
+import { adminService } from "../services/adminService";
 import {
   Brain,
   Search,
@@ -172,11 +174,10 @@ export default function TeacherDashboard({ user, students, onAddLog, onLogout }:
 
   // Load announcements from central backend
   useEffect(() => {
-    fetch("/api/announcements")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.notices.length > 0) {
-          const mapped = data.notices.map((n: any) => ({
+    adminService.getAnnouncements()
+      .then((announcements) => {
+        if (announcements.length > 0) {
+          const mapped = announcements.map((n: any) => ({
             id: n.id,
             title: n.title,
             body: n.content,
@@ -320,15 +321,10 @@ export default function TeacherDashboard({ user, students, onAddLog, onLogout }:
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: promptContext }],
-          studentId: activeStudents[0]?.id || "std-01"
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        activeStudents[0]?.id || "std-01",
+        [{ role: "user", text: promptContext }]
+      );
       if (data.success) {
         setChatMessages((prev) => [
           ...prev,
@@ -468,15 +464,10 @@ export default function TeacherDashboard({ user, students, onAddLog, onLogout }:
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: prompt }],
-          studentId: studentContext?.id || "std-01"
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        studentContext?.id || "std-01",
+        [{ role: "user", text: prompt }]
+      );
       let scoreText = `${Math.floor(scoreVal / 10)}/10`;
       let fdb = "Brilliant attempt. Solid calculations and equations.";
       
@@ -520,24 +511,17 @@ export default function TeacherDashboard({ user, students, onAddLog, onLogout }:
     e.preventDefault();
     if (!newNoticeTitle.trim() || !newNoticeBody.trim()) return;
 
-    fetch("/api/announcements", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: newNoticeTitle,
-        body: newNoticeBody,
-        category: "Circular",
-        targetClass: newNoticeClass,
-        priority: newNoticePriority
-      })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setNewNoticeTitle("");
-          setNewNoticeBody("");
-          alert("New official notice dispatched to Notice Boards.");
-        }
+    adminService.createAnnouncement({
+      title: newNoticeTitle,
+      content: newNoticeBody,
+      category: "Academic",
+      targetClass: newNoticeClass,
+      priority: newNoticePriority
+    } as any)
+      .then(() => {
+        setNewNoticeTitle("");
+        setNewNoticeBody("");
+        alert("New official notice dispatched to Notice Boards.");
       })
       .catch((err) => console.error("Error posting announcement:", err));
   };

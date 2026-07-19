@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Student, User } from "../types";
+import { aiService } from "../services/aiService";
 import {
   Sparkles,
   BookOpen,
@@ -73,15 +74,10 @@ export default function AIWorkplaceHub({ user, students }: AIWorkplaceHubProps) 
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: prompt }],
-          studentId: students[0]?.id || "std-01"
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        students[0]?.id || "std-01",
+        [{ role: "user", text: prompt }]
+      );
       if (data.success) {
         setLessonPlan(data.text);
       } else {
@@ -115,15 +111,10 @@ export default function AIWorkplaceHub({ user, students }: AIWorkplaceHubProps) 
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: prompt }],
-          studentId: students[0]?.id || "std-01"
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        students[0]?.id || "std-01",
+        [{ role: "user", text: prompt }]
+      );
       if (data.success) {
         setWorksheetContent(data.text);
       } else {
@@ -167,15 +158,10 @@ export default function AIWorkplaceHub({ user, students }: AIWorkplaceHubProps) 
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: prompt }],
-          studentId: selectedStudentId
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        selectedStudentId,
+        [{ role: "user", text: prompt }]
+      );
       if (data.success) {
         setReportSummary(data.text);
       } else {

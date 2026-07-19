@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Student } from "../types";
+import { aiService } from "../services/aiService";
 import {
   Brain,
   FileText,
@@ -50,12 +51,7 @@ export default function TeacherTab({ students, onAddLog }: TeacherTabProps) {
     setDiagnosing(true);
     setDiagnosisResult(null);
     try {
-      const res = await fetch("/api/ai/diagnose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: selectedStudentId }),
-      });
-      const data = await res.json();
+      const data = await aiService.diagnose(selectedStudentId);
       if (data.success) {
         setDiagnosisResult(data.insight);
       }

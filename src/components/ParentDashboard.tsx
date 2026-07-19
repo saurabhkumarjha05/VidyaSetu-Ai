@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Student, ChatMessage, User } from "../types";
 import { useSocket } from "../lib/socket";
+import { aiService } from "../services/aiService";
+import { chatService } from "../services/chatService";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Brain,
@@ -295,18 +297,13 @@ export default function ParentDashboard({ user, students, onAddLog, onLogout }: 
     setSendingMessage(true);
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: child.id,
-          messages: [...chatHistory, userMessage].map((msg) => ({
-            role: msg.role,
-            text: msg.text
-          }))
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        child.id,
+        [...chatHistory, userMessage].map((msg) => ({
+          role: msg.role === "user" ? "user" : "model",
+          text: msg.text
+        }))
+      );
       if (data.success) {
         setChatHistory((prev) => [
           ...prev,
@@ -374,11 +371,10 @@ export default function ParentDashboard({ user, students, onAddLog, onLogout }: 
     const room = `parent-teacher:${child.id}:${selectedTeacherId}`;
     socket.emit("chat:join", room);
 
-    fetch(`/api/chats/${room}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.messages.length > 0) {
-          const mapped = data.messages.map((m: any) => ({
+    chatService.getMessages(room)
+      .then((messages) => {
+        if (messages.length > 0) {
+          const mapped = messages.map((m: any) => ({
             sender: m.senderRole === "Parent" ? "parent" as const : "teacher" as const,
             text: m.text,
             date: new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),

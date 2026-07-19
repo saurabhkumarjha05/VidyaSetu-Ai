@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Student, User } from "../types";
 import { useSocket } from "../lib/socket";
+import { adminService } from "../services/adminService";
 import {
   Brain, Sparkles, Shield, LogOut, Users, TrendingUp, CheckCircle, AlertTriangle,
   ClipboardList, Sliders, Database, Calendar, Lock, Settings, LayoutDashboard,
@@ -116,11 +117,10 @@ export default function AdminDashboard({ user, students: propStudents, onLogout 
 
   // Load notices from central backend
   useEffect(() => {
-    fetch("/api/announcements")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.notices.length > 0) {
-          const mapped = data.notices.map((n: any) => ({
+    adminService.getAnnouncements()
+      .then((announcements) => {
+        if (announcements.length > 0) {
+          const mapped = announcements.map((n: any) => ({
             id: n.id,
             title: n.title,
             body: n.content,
@@ -136,14 +136,13 @@ export default function AdminDashboard({ user, students: propStudents, onLogout 
 
   // Fetch central security audit logs
   useEffect(() => {
-    fetch("/api/activity-logs")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.logs.length > 0) {
-          const mapped = data.logs.map((l: any) => ({
+    adminService.getActivityLogs()
+      .then((logs) => {
+        if (logs.length > 0) {
+          const mapped = logs.map((l: any) => ({
             timestamp: new Date(l.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-            user: l.actor,
-            action: l.description,
+            user: l.actor || l.triggeredBy,
+            action: l.description || l.action,
             ip: "192.168.1.10"
           }));
           setAuditLogs(mapped);
@@ -279,22 +278,15 @@ export default function AdminDashboard({ user, students: propStudents, onLogout 
     e.preventDefault();
     if (!noticeTitle.trim() || !noticeBody.trim()) return;
 
-    fetch("/api/announcements", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: noticeTitle,
-        body: noticeBody,
-        category: "Circular"
-      })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setNoticeTitle("");
-          setNoticeBody("");
-          alert("New announcement posted and pushed to student & parent notification registers.");
-        }
+    adminService.createAnnouncement({
+      title: noticeTitle,
+      content: noticeBody,
+      category: "Circular"
+    } as any)
+      .then(() => {
+        setNoticeTitle("");
+        setNoticeBody("");
+        alert("New announcement posted and pushed to student & parent notification registers.");
       })
       .catch((err) => console.error("Error posting announcement:", err));
   };

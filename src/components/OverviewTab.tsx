@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Student, Role } from "../types";
+import { aiService } from "../services/aiService";
 import { Shield, Brain, AlertTriangle, TrendingUp, Users, ArrowRight, CheckCircle, Sparkles, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -49,11 +50,7 @@ export default function OverviewTab({ students }: OverviewTabProps) {
     setReport(null);
     setLoadingStep(0);
     try {
-      const res = await fetch("/api/ai/admin-insight", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
+      const data = await aiService.adminInsight();
       if (data.success) {
         setReport(data.report);
       }

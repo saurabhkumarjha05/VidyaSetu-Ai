@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Student, ChatMessage } from "../types";
+import { aiService } from "../services/aiService";
 import {
   Brain,
   Send,
@@ -77,18 +78,13 @@ export default function StudentTab({ students, onAddLog }: StudentTabProps) {
     setSendingMessage(true);
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: selectedStudentId,
-          messages: [...chatHistory, userMessage].map((msg) => ({
-            role: msg.role,
-            text: msg.text,
-          })),
-        }),
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        selectedStudentId,
+        [...chatHistory, userMessage].map((msg) => ({
+          role: msg.role === "user" ? "user" : "model",
+          text: msg.text,
+        })),
+      );
       if (data.success) {
         setChatHistory((prev) => [
           ...prev,

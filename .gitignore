@@ -6,3 +6,39 @@ coverage/
 *.log
 .env*
 !.env.example
+# Node.js
+node_modules/
+build/
+dist/
+coverage/
+
+# Environment
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+ai/venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyd
+.python-version
+
+# Python caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/

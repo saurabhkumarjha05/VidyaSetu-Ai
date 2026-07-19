@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { User, Role } from "../types";
 import { useSocket } from "../lib/socket";
+import { superAdminService } from "../services/superAdminService";
+import { adminService } from "../services/adminService";
 import {
   Brain, Shield, Sliders, Database, LayoutDashboard, Key,
   Search, Bell, Plus, ChevronRight, MessageSquare, Activity,
@@ -83,56 +85,22 @@ export default function SuperAdminDashboard({ user, onLogout }: SuperAdminDashbo
     try {
       setRefreshing(true);
       // Fetch schools list
-      const schoolsRes = await fetch("/api/super/schools", {
-        headers: {
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        }
-      });
-      const schoolsData = await schoolsRes.json();
-      if (schoolsData.success) {
-        setSchools(schoolsData.schools);
-      }
+      const schools = await superAdminService.getSchools();
+      setSchools(schools);
 
       // Fetch support tickets
-      const ticketsRes = await fetch("/api/super/tickets", {
-        headers: {
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        }
-      });
-      const ticketsData = await ticketsRes.json();
-      if (ticketsData.success) {
-        setTickets(ticketsData.tickets);
-      }
+      const tickets = await superAdminService.getTickets();
+      setTickets(tickets);
 
       // Fetch analytics
-      const analyticsRes = await fetch("/api/super/analytics", {
-        headers: {
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        }
-      });
-      const analyticsData = await analyticsRes.json();
-      if (analyticsData.success) {
-        setAnalytics(analyticsData.analytics);
+      const analyticsData = await superAdminService.getAnalytics();
+      if (analyticsData) {
+        setAnalytics(analyticsData);
       }
 
       // Fetch platform activity logs
-      const logsRes = await fetch("/api/activity-logs", {
-        headers: {
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        }
-      });
-      const logsData = await logsRes.json();
-      if (logsData.success) {
-        setAuditLogs(logsData.logs);
-      }
+      const logs = await adminService.getActivityLogs();
+      setAuditLogs(logs as any);
 
     } catch (e) {
       console.error("Error fetching Super Admin data", e);
@@ -158,23 +126,12 @@ export default function SuperAdminDashboard({ user, onLogout }: SuperAdminDashbo
     }
 
     try {
-      const res = await fetch("/api/super/schools/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        },
-        body: JSON.stringify(newSchoolData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSchools(data.schools);
-        setSchoolFormSuccess(`Workspace ${newSchoolData.id} provisioned with active super credentials.`);
-        setNewSchoolData({ id: "", name: "", adminEmail: "" });
+      const school = await superAdminService.createSchool(newSchoolData);
+      if (school) {
         // Refresh analytics
         fetchPlatformData();
+        setSchoolFormSuccess(`Workspace ${newSchoolData.id} provisioned with active super credentials.`);
+        setNewSchoolData({ id: "", name: "", adminEmail: "" });
         setTimeout(() => {
           setIsNewSchoolOpen(false);
           setSchoolFormSuccess("");
@@ -190,17 +147,7 @@ export default function SuperAdminDashboard({ user, onLogout }: SuperAdminDashbo
   // Handle status updates (Approve, Reject, Suspend, Activate)
   const handleUpdateSchoolStatus = async (schoolId: string, status: "Active" | "Pending" | "Suspended") => {
     try {
-      const res = await fetch("/api/super/schools/status", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        },
-        body: JSON.stringify({ schoolId, status })
-      });
-      const data = await res.json();
+      const data = await superAdminService.setSchoolStatus(schoolId, status);
       if (data.success) {
         setSchools(data.schools);
         fetchPlatformData();
@@ -216,17 +163,7 @@ export default function SuperAdminDashboard({ user, onLogout }: SuperAdminDashbo
     if (!selectedTicket || !ticketReply.trim()) return;
 
     try {
-      const res = await fetch("/api/super/tickets/reply", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        },
-        body: JSON.stringify({ ticketId: selectedTicket.id, reply: ticketReply })
-      });
-      const data = await res.json();
+      const data = await superAdminService.replyTicket(selectedTicket.id, ticketReply);
       if (data.success) {
         setTickets(data.tickets);
         setSelectedTicket(null);
@@ -247,23 +184,12 @@ export default function SuperAdminDashboard({ user, onLogout }: SuperAdminDashbo
     }
 
     try {
-      const res = await fetch("/api/announcements", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": Role.SUPER_ADMIN,
-          "x-user-id": user.id,
-          "x-school-code": user.schoolCode
-        },
-        body: JSON.stringify({
-          title: noticeData.title,
-          body: noticeData.body,
-          category: noticeData.category,
-          isGlobal: true // This flags it for all tenants
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
+      const data = await adminService.createAnnouncement({
+        title: noticeData.title,
+        content: noticeData.body,
+        category: noticeData.category as any,
+      } as any);
+      if (data) {
         setNoticeSuccess("Platform bulletin successfully broadcasted to all school tenants.");
         setNoticeData({ title: "", body: "", category: "Circular" });
         fetchPlatformData();

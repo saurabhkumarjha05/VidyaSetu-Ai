@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Student, User, Role } from "../types";
 import { useSocket } from "../lib/socket";
+import { aiService } from "../services/aiService";
+import { chatService } from "../services/chatService";
 import {
   MessageSquare, Search, Plus, Send, MoreVertical, Paperclip, Smile, Mic,
   Image as ImageIcon, FileText, Check, CheckCheck, Phone, Video, User as UserIcon,
@@ -486,11 +488,10 @@ export default function ParentCommsCenter({ user, students, onAddLog }: ParentCo
     socket.emit("chat:join", activeChat.id);
 
     // Fetch messages from database endpoint
-    fetch(`/api/chats/${activeChat.id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.messages.length > 0) {
-          const mapped: Message[] = data.messages.map((m: any) => ({
+    chatService.getMessages(activeChat.id)
+      .then((messages) => {
+        if (messages.length > 0) {
+          const mapped: Message[] = messages.map((m: any) => ({
             id: m.id,
             sender: m.sender,
             senderRole: m.senderRole,
@@ -755,15 +756,10 @@ export default function ParentCommsCenter({ user, students, onAddLog }: ParentCo
         }));
 
         // 3. Request actual Gemini API generation or contextual response
-        fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [{ role: "user", text: `You are Vidya AI Companion, a brilliant grounded digital study tutor. Answer this student inquiry contextually, matching their Standard 9 level. Query: "${userTextSaved}"` }],
-            studentId: activeStudent.id
-          })
-        })
-          .then((res) => res.json())
+        aiService.chat(
+          activeStudent.id,
+          [{ role: "user", text: `You are Vidya AI Companion, a brilliant grounded digital study tutor. Answer this student inquiry contextually, matching their Standard 9 level. Query: "${userTextSaved}"` }]
+        )
           .then((data) => {
             setTypingStatus((prev) => ({
               ...prev,
@@ -941,15 +937,10 @@ export default function ParentCommsCenter({ user, students, onAddLog }: ParentCo
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: context }],
-          studentId: activeStudent.id
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        activeStudent.id,
+        [{ role: "user", text: context }]
+      );
       if (data.success) {
         setAiDraft(data.text);
       } else {
@@ -988,15 +979,10 @@ export default function ParentCommsCenter({ user, students, onAddLog }: ParentCo
     `;
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: context }],
-          studentId: activeStudent.id
-        })
-      });
-      const data = await res.json();
+      const data = await aiService.chat(
+        activeStudent.id,
+        [{ role: "user", text: context }]
+      );
       if (data.success) {
         setMeetingSummary(data.text);
       } else {
