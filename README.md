@@ -19,6 +19,7 @@ Transforming traditional schools into intelligent, connected and data-driven cam
 </div>
 
 ---
+## Live Link: https://vidyasetu-ai-suvl.onrender.com/
 
 # 📖 About the Project
 
