@@ -444,9 +444,7 @@ Response Back To User
 ---
 
 # 📸 Screenshots
-
-> Add screenshots of
-
+>Adding Soon..
 - Landing Page
 - Student Dashboard
 - Teacher Dashboard
@@ -474,7 +472,7 @@ Response Back To User
 
 # 👨‍💻 Developed By
 
-**Saurabh Kumar Jha**
+**Saurabh Kumar Jha** and Team 
 
 B.Tech Computer Science Engineering
 
